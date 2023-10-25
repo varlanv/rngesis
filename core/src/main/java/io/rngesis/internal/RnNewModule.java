@@ -17,6 +17,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 @Value
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class RnNewModule<T> {
 
     RNGUnknownTypes parent;
@@ -237,13 +238,23 @@ public class RnNewModule<T> {
                 val valueModule = getModuleForType(valueType);
                 val typeNameKey = rawType + "<" + keyType.getTypeName() + "," + valueType.getTypeName() + ">";
                 if (rawType == Map.class || rawType == HashMap.class) {
-                    return createMapModule(
-                            typeNameKey,
-                            keyModule,
-                            valueModule,
-                            HashMap::new,
-                            Map::put
-                    );
+                    if (((Class<?>) keyType).isEnum()) {
+                        return createMapModule(
+                                typeNameKey,
+                                keyModule,
+                                valueModule,
+                                size -> new EnumMap((Class<?>) keyType),
+                                Map::put
+                        );
+                    } else {
+                        return createMapModule(
+                                typeNameKey,
+                                keyModule,
+                                valueModule,
+                                HashMap::new,
+                                Map::put
+                        );
+                    }
                 } else if (rawType == SortedMap.class || rawType == TreeMap.class || rawType == NavigableMap.class) {
                     return createMapModule(
                             typeNameKey,
@@ -293,7 +304,6 @@ public class RnNewModule<T> {
                     )
             );
         } else {
-            // You can handle more type variations here or throw an exception for unexpected types
             throw new IllegalArgumentException("Unexpected type: " + type.getTypeName());
         }
     }
@@ -340,7 +350,6 @@ public class RnNewModule<T> {
                                                  Function<Integer, Object> collectionSupplier,
                                                  BiConsumer<Object, Object> instanceConsumer) {
         val nestedActualTypeArgument = param.getActualTypeArguments()[0];
-        // If the actual type argument is another ParameterizedType, we recursively get its module.
         if (nestedActualTypeArgument instanceof ParameterizedType) {
             val nestedModule = getParameterizedRnGesisModule((ParameterizedType) nestedActualTypeArgument);
             return createCollectionModule(
@@ -381,7 +390,6 @@ public class RnNewModule<T> {
     private RNGesisModule<?> getOptionalModule(ParameterizedType param,
                                                Class<?> rawType) {
         val nestedActualTypeArgument = param.getActualTypeArguments()[0];
-        // If the actual type argument is another ParameterizedType, we recursively get its module.
         if (nestedActualTypeArgument instanceof ParameterizedType) {
             val nestedModule = getParameterizedRnGesisModule((ParameterizedType) nestedActualTypeArgument);
             return createOptionalModule(
@@ -420,14 +428,14 @@ public class RnNewModule<T> {
                                                     String innerTypeName,
                                                     Function<Integer, Object> collectionSupplier,
                                                     BiConsumer<Object, Object> instanceConsumer) {
-        String moduleName = rawTypeName + "<" + innerTypeName + ">";
+        val moduleName = rawTypeName + "<" + innerTypeName + ">";
         return RNGUnknownTypes.modules.getOrCompute(
                 moduleName,
                 () -> (rnGesis, random, state) -> {
                     val size = random.nextInt(3) + 1;
                     val objects = collectionSupplier.apply(size);
                     for (var i1 = 0; i1 < size; i1++) {
-                        Object next = innerModule.next(rnGesis, random, state);
+                        val next = innerModule.next(rnGesis, random, state);
                         instanceConsumer.accept(objects, next);
                     }
                     return objects;
@@ -438,7 +446,7 @@ public class RnNewModule<T> {
     private RNGesisModule<?> createOptionalModule(String rawTypeName,
                                                   RNGesisModule<?> innerModule,
                                                   String innerTypeName) {
-        String moduleName = rawTypeName + "<" + innerTypeName + ">";
+        val moduleName = rawTypeName + "<" + innerTypeName + ">";
         return RNGUnknownTypes.modules.getOrCompute(
                 moduleName,
                 () -> (rnGesis, random, state) -> Optional.of(innerModule.next(rnGesis, random, state))
@@ -480,7 +488,7 @@ public class RnNewModule<T> {
                         if (!constructorParamNames.contains(parameter.getName())) {
                             val maybeParameterizedType = parameter.getParameterizedType();
                             if (maybeParameterizedType instanceof ParameterizedType) {
-                                val parameterizedType = (ParameterizedType) maybeParameterizedType;
+//                                val parameterizedType = (ParameterizedType) maybeParameterizedType;
                                 setters[idx++] = new MethodWithParameter(method, null, parameter.getType(), null);
                             } else {
                                 setters[idx++] = new MethodWithParameter(method, null, parameter.getType(), null);

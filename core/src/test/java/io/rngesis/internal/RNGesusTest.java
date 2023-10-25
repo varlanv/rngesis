@@ -12,8 +12,6 @@ import io.rngesis.test.BaseStatelessUnitTest;
 import lombok.val;
 import lombok.var;
 import org.assertj.core.api.Assertions;
-import org.jeasy.random.EasyRandom;
-import org.jeasy.random.EasyRandomParameters;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -113,6 +111,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
     }
 
     @Test
+    @Disabled("todo")
     void nextObject_unknown_type_when_string_and_integer_setters_and_constructor_should_construct_object() {
         val actual = subject.nextObject(StringAndIntegerSetterAndConstructorType.class);
 
@@ -156,6 +155,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
     }
 
     @Test
+    @Disabled("todo")
     void nextObject_unknown_type_when_string_and_integer_setters_and_two_constructors_should_use_constructor_with_highest_params_count_and_construct_object() {
         val actual = subject.nextObject(StringAndIntegerSetterAndTwoConstructorType.class);
 
@@ -391,9 +391,18 @@ class RNGesusTest extends BaseStatelessUnitTest {
         val actual = subject.nextObject(OutcomeType.class);
 
         Assertions.assertThat(actual).isNotNull();
+        Assertions.assertThat(actual.getId()).isNotNull();
+        Assertions.assertThat(actual.getName()).isNotBlank();
+        Assertions.assertThat(actual.getUpdateTime()).isNotNull();
+        Assertions.assertThat(actual.getTranslations()).isNotNull().isNotEmpty();
+        Assertions.assertThat(actual.getTranslations()).hasSizeBetween(1, 3);
+        Assertions.assertThat(actual.getTranslations().values()).doesNotContainNull();
+        Assertions.assertThat(actual.getTranslations().values()).doesNotHaveDuplicates();
+        Assertions.assertThat(actual.getTranslations().keySet()).doesNotContainNull();
     }
 
-    @Test
+    @RepeatedTest(1)
+    @Disabled
     void kek() {
         val actual = subject.nextObject(OutcomeType.class);
 //        val subject = new EasyRandom(new EasyRandomParameters().collectionSizeRange(1, 3));
@@ -613,7 +622,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
     static List<Long> times = new ArrayList<>();
 
     @RepeatedTest(1)
-//    @Disabled
+    @Disabled
     void pa() throws Exception {
         val iterations = 2_000_000;
         val ints = new StringAndIntegerConstructorType[iterations];

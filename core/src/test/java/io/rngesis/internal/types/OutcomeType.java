@@ -18,15 +18,7 @@ public class OutcomeType {
 
     private String name;
 
-    private String shortName;
-
-    private String externalId;
-
     private Timestamp updateTime;
 
-    private String specifierPattern;
-
     private Map<Language, String> translations;
-
-    private Map<Language, String> shortNameTranslations;
 }
