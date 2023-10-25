@@ -1,0 +1,10 @@
+plugins {
+    id('io.rngesis.gradle.internal-gradle-convention-plugin')
+}
+
+dependencies {
+    testImplementation(projects.commonTest)
+    testImplementation("commons-io:commons-io:${project.properties["ioUtilsVersion"]}")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:${project.properties["jacksonVersion"]}")
+    testImplementation("net.datafaker:datafaker:${project.properties["dataFakerVersion"]}")
+}

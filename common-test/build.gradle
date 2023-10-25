@@ -1,0 +1,11 @@
+plugins {
+    id("io.rngesis.gradle.internal-gradle-convention-plugin")
+    id("java-library")
+}
+
+dependencies {
+    api("org.assertj:assertj-core:${project.properties["assertJVersion"]}")
+    api("org.junit.jupiter:junit-jupiter-api:${project.properties["junitVersion"]}")
+    api("org.jeasy:easy-random-core:${project.properties["easyRandomVersion"]}")
+    runtimeOnly("org.junit.jupiter:junit-jupiter-engine:${project.properties["junitVersion"]}")
+}

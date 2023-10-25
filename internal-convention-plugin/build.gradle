@@ -1,0 +1,45 @@
+plugins {
+    id "java-gradle-plugin"
+}
+
+file("../gradle.properties").eachLine {
+    if (!it.isAllWhitespace() && !it.startsWith("#")) {
+        def split = it.split("=", 2)
+        project.ext.set(split[0], split[1])
+    }
+}
+
+java {
+    toolchain {
+        vendor = JvmVendorSpec.AZUL
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+
+boolean isCiBuild = providers.environmentVariable('CI').getOrNull() != null
+
+repositories {
+    if (!isCiBuild) {
+        mavenLocal()
+    }
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation("org.codehaus.groovy:groovy-all:${groovyVersion}")
+    testImplementation("org.spockframework:spock-core:${spockVersion}")
+}
+
+gradlePlugin {
+    plugins {
+        rngesisInternalGradleConventionPlugin {
+            id = "io.rngesis.gradle.internal-gradle-convention-plugin"
+            implementationClass = "io.rngesis.gradle.InternalConventionPlugin"
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
