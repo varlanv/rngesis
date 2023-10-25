@@ -2,6 +2,8 @@ package io.rngesis.internal;
 
 import io.rngesis.api.RNGesisModule;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -43,6 +45,8 @@ public class RNGDefaultModules {
         tmpMap.put(float.class.getName(), (RNGesisModule<Float>) (rnGesis, random, moduleState) -> random.nextFloat());
         tmpMap.put(double.class.getName(), (RNGesisModule<Double>) (rnGesis, random, moduleState) -> random.nextDouble());
         tmpMap.put(char.class.getName(), (RNGesisModule<Character>) (rnGesis, random, moduleState) -> (char) random.nextInt());
+        tmpMap.put(BigInteger.class.getName(), (RNGesisModule<BigInteger>) (rnGesis, random, moduleState) -> new BigInteger(128, random));
+        tmpMap.put(BigDecimal.class.getName(), (RNGesisModule<BigDecimal>) (rnGesis, random, moduleState) -> BigDecimal.valueOf(random.nextDouble()));
         tmpMap.put(Date.class.getName(), (RNGesisModule<Date>) (rnGesis, random, moduleState) -> new Date(random.nextLong()));
         tmpMap.put(Instant.class.getName(), (RNGesisModule<Instant>) (rnGesis, random, moduleState) -> Instant.ofEpochMilli(random.nextLong()));
         tmpMap.put(OffsetDateTime.class.getName(), (RNGesisModule<OffsetDateTime>) (rnGesis, random, moduleState) -> OffsetDateTime.ofInstant(Instant.ofEpochMilli(random.nextLong()), ZoneId.systemDefault()));

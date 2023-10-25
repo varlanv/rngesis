@@ -3,6 +3,7 @@ package io.rngesis.internal;
 import io.rngesis.internal.types.*;
 import io.rngesis.test.BaseStatelessUnitTest;
 import lombok.val;
+import lombok.var;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
@@ -13,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
@@ -167,7 +169,6 @@ class RNGesusTest extends BaseStatelessUnitTest {
     }
 
     @Test
-    @Disabled
     void nextObject_unknown_type_when_list_with_bigint_generic_then_should_create_object() {
         val actual = subject.nextObject(ListWithBigIntegerGenericType.class);
 
@@ -177,9 +178,37 @@ class RNGesusTest extends BaseStatelessUnitTest {
     }
 
     @RepeatedTest(DEFAULT_REPEAT_COUNT)
+    void nextObject_unknown_type_when_list_with_bigint_generic_created_100_instances_then_should_have_different_sizes() {
+        val sizes = new HashSet<>();
+
+        for (var i = 0; i < 100; i++) {
+            sizes.add(subject.nextObject(ListWithBigIntegerGenericType.class).getList().size());
+        }
+
+        Assertions.assertThat(sizes).containsOnly(1, 2, 3);
+    }
+
+    @RepeatedTest(DEFAULT_REPEAT_COUNT)
+    void nextObject_unknown_type_when_list_with_bigint_generic_created_100_instances_then_should_have_different_values() {
+        val values = new HashSet<>();
+        val count = 100;
+        val valuesCount = new AtomicInteger();
+
+        for (var i = 0; i < count; i++) {
+            subject.nextObject(ListWithBigIntegerGenericType.class).getList().forEach(bigint -> {
+                values.add(bigint);
+                valuesCount.getAndIncrement();
+            });
+        }
+
+        Assertions.assertThat(values).hasSize(valuesCount.get());
+        Assertions.assertThat(values).doesNotContainNull();
+    }
+
+    @RepeatedTest(DEFAULT_REPEAT_COUNT)
     void nextObject_unknown_type_when_string_and_integer_constructor_and_creating_in_parallel_then_instances_should_be_different() {
         val collection = new ConcurrentLinkedQueue<>();
-        int nThreads = 10;
+        val nThreads = 10;
 
         parallel(nThreads, () -> collection.add(subject.nextObject(StringAndIntegerConstructorType.class)));
 
@@ -271,7 +300,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
 
     static List<Long> times = new ArrayList<>();
 
-    @RepeatedTest(20)
+    @RepeatedTest(1)
 //    @Disabled
     void pa() throws Exception {
         int iterations = 2000000;

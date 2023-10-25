@@ -8,7 +8,6 @@ import lombok.var;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Supplier;
 
 public class RNGesus implements RNGesis {
 
@@ -16,18 +15,10 @@ public class RNGesus implements RNGesis {
     private final RNGUnknownTypes rngUnknownType;
     private final RNGDefaultTypes rngDefaultTypes;
 
-    public RNGesus(Supplier<Random> random) {
-        this.threadScopeRandom = new ThreadScopeRandom(random);
+    public RNGesus() {
+        this.threadScopeRandom = new ThreadScopeRandom();
         this.rngDefaultTypes = new RNGDefaultTypes();
         this.rngUnknownType = new RNGUnknownTypes();
-    }
-
-    public RNGesus(Random random) {
-        this(() -> random);
-    }
-
-    public RNGesus() {
-        this(Random::new);
     }
 
     @Override

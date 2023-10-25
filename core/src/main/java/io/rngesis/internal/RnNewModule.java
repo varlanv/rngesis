@@ -7,11 +7,10 @@ import lombok.Value;
 import lombok.val;
 import lombok.var;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.*;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 @Value
@@ -41,7 +40,7 @@ public class RnNewModule<T> {
             val constructor = constructors[0];
             int modifiers = constructor.getModifiers();
             if (Modifier.isPublic(modifiers)) {
-                val parameterTypes = constructor.getParameterTypes();
+                val parameterTypes = constructor.getGenericParameterTypes();
                 if (parameterTypes.length == 0) {
                     return (rnGesis, random, state) -> newInstanceNoParams(constructor);
                 } else {
@@ -93,22 +92,56 @@ public class RnNewModule<T> {
         return null;
     }
 
-    private RNGesisModule<?>[] prepareChildModules(Class<?>[] parameterTypes) {
+    private RNGesisModule<?>[] prepareChildModules(Type[] parameterTypes) {
         val childModules = new RNGesisModule<?>[parameterTypes.length];
         for (int i = 0; i < parameterTypes.length; i++) {
             val param = parameterTypes[i];
-            val typeName = param.getName();
-            childModules[i] = RNGUnknownTypes.modules.getOrCompute(
-                    typeName,
-                    () -> RNGUnknownTypes.computeNewModule(
-                            parent,
-                            typeName,
-                            rnGesis,
-                            param,
-                            random,
-                            state
-                    )
-            );
+            if (param instanceof ParameterizedType) {
+                val parameterizedParam = (ParameterizedType) param;
+                val actualTypeArguments = parameterizedParam.getActualTypeArguments();
+                val rawType = (Class<?>) parameterizedParam.getRawType();
+                if (rawType.isAssignableFrom(List.class)) {
+                    val actualTypeArgument = (Class<?>) actualTypeArguments[0];
+                    val actualTypeArgumentName = actualTypeArgument.getName();
+                    val actualTypeModule = RNGUnknownTypes.modules.getOrCompute(
+                            actualTypeArgumentName,
+                            () -> RNGUnknownTypes.computeNewModule(
+                                    parent,
+                                    actualTypeArgumentName,
+                                    rnGesis,
+                                    actualTypeArgument,
+                                    random,
+                                    state
+                            )
+                    );
+                    val childModuleName = rawType.getName() + actualTypeArgumentName;
+                    childModules[i] = RNGUnknownTypes.modules.getOrCompute(
+                            childModuleName,
+                            () -> (rnGesis, random, state) -> {
+                                val size = random.nextInt(3) + 1;
+                                val objects = new ArrayList<>(size);
+                                for (var i1 = 0; i1 < size; i1++) {
+                                    Object next = actualTypeModule.next(rnGesis, random, state);
+                                    objects.add(next);
+                                }
+                                return objects;
+                            });
+                }
+            } else {
+                val rawParam = (Class<?>) param;
+                val typeName = rawParam.getName();
+                childModules[i] = RNGUnknownTypes.modules.getOrCompute(
+                        typeName,
+                        () -> RNGUnknownTypes.computeNewModule(
+                                parent,
+                                typeName,
+                                rnGesis,
+                                rawParam,
+                                random,
+                                state
+                        )
+                );
+            }
         }
         return childModules;
     }
