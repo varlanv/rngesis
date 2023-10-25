@@ -9,6 +9,8 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -35,7 +37,16 @@ public class InternalConventionPlugin implements Plugin<Project> {
         tasks.withType(Test.class).configureEach(test -> {
             test.useJUnitPlatform();
             test.setJvmArgs(
-                    Stream.of(test.getJvmArgs(), Arrays.asList("-XX:TieredStopAtLevel=1", "-noverify", "-Xmx1024m", "-XX:+UseParallelGC"))
+                    Stream.of(
+                                    test.getJvmArgs(),
+                                    Arrays.asList(
+                                            "-XX:TieredStopAtLevel=1",
+                                            "-noverify",
+                                            "-Xmx2048m",
+                                            "-XX:+UseParallelGC",
+                                            "-XX:ParallelGCThreads=2"
+                                    )
+                            )
                             .filter(Objects::nonNull)
                             .flatMap(Collection::stream)
                             .collect(Collectors.toList())
@@ -56,5 +67,16 @@ public class InternalConventionPlugin implements Plugin<Project> {
         dependencies.add("annotationProcessor", "org.projectlombok:lombok:" + lombokVersion);
         dependencies.add("testCompileOnly", "org.projectlombok:lombok:" + lombokVersion);
         dependencies.add("testAnnotationProcessor", "org.projectlombok:lombok:" + lombokVersion);
+
+        plugins.withId("maven-publish", plugin -> {
+            project.getExtensions().configure("publishing", publishing -> {
+                PublishingExtension publishingExtension = (PublishingExtension) publishing;
+                publishingExtension.publications(publications -> {
+                    publications.create("mavenJava", MavenPublication.class, mavenPublication -> {
+                        mavenPublication.from(project.getComponents().getByName("java"));
+                    });
+                });
+            });
+        });
     }
 }

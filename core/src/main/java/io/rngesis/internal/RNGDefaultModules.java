@@ -4,6 +4,7 @@ import io.rngesis.api.RNGesisModule;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -50,6 +51,7 @@ public class RNGDefaultModules {
         tmpMap.put(Date.class.getName(), (RNGesisModule<Date>) (rnGesis, random, moduleState) -> new Date(random.nextLong()));
         tmpMap.put(Instant.class.getName(), (RNGesisModule<Instant>) (rnGesis, random, moduleState) -> Instant.ofEpochMilli(random.nextLong()));
         tmpMap.put(OffsetDateTime.class.getName(), (RNGesisModule<OffsetDateTime>) (rnGesis, random, moduleState) -> OffsetDateTime.ofInstant(Instant.ofEpochMilli(random.nextLong()), ZoneId.systemDefault()));
+        tmpMap.put(Timestamp.class.getName(), (RNGesisModule<Timestamp>) (rnGesis, random, moduleState) -> new Timestamp(random.nextLong()));
         modules = Collections.unmodifiableMap(tmpMap);
     }
 }

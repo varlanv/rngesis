@@ -1,4 +1,4 @@
-package io.rngesis.internal.types;
+package io.rngesis.internal.types.collection.list;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @RequiredArgsConstructor
-public class ListWithBigIntegerGenericType {
+public class ListWithListBigIntegerGenericType {
 
-    private final List<BigInteger> list;
+    private final List<List<BigInteger>> list;
 }

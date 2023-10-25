@@ -1,6 +1,9 @@
 plugins {
-    id('io.rngesis.gradle.internal-gradle-convention-plugin')
+    id("io.rngesis.gradle.internal-gradle-convention-plugin")
+    id("maven-publish")
 }
+
+publishing {}
 
 dependencies {
     testImplementation(projects.commonTest)

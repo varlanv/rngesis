@@ -6,7 +6,7 @@ import java.util.Random;
 
 public interface RNGesisModule<T> {
 
-    T next(RNGesis rnGesis, Random random, NewModuleState operation);
+    T next(RNGesis rnGesis, Random random, NewModuleState state);
 
     default boolean isStateless() {
         return false;
