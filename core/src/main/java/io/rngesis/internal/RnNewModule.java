@@ -25,12 +25,12 @@ public class RnNewModule<T> {
     RNGesis rnGesis;
     Class<T> type;
     Random random;
-    NewModuleState state;
+    Memo memo;
 
 
     @SneakyThrows
     public RNGesisModule<?> computeNewModule() {
-        val module = getParameterizedRnGesisModule(type);
+        val module = getParameterizedRngesisModule(type);
         if (module != null) {
             return wrapSetters(type, module);
         } else {
@@ -38,25 +38,24 @@ public class RnNewModule<T> {
         }
     }
 
-    private RNGesisModuleWithConstructorParams getParameterizedRnGesisModule(Class<T> type) {
+    private RNGesisModuleWithConstructorParams getParameterizedRngesisModule(Class<T> type) {
         val constructors = type.getConstructors();
         if (constructors.length == 1) {
             val constructor = constructors[0];
-            int modifiers = constructor.getModifiers();
+            val modifiers = constructor.getModifiers();
             if (Modifier.isPublic(modifiers)) {
                 val parameterTypes = constructor.getGenericParameterTypes();
                 if (parameterTypes.length == 0) {
-                    return new RNGesisModuleWithConstructorParams((rnGesis, random, state) -> newInstanceNoParams(constructor));
+                    return new RNGesisModuleWithConstructorParams((rnGesis, random) -> newInstanceNoParams(constructor));
                 } else {
                     val childModules = prepareChildModules(parameterTypes);
                     val set = parameterNames(constructor);
                     return new RNGesisModuleWithConstructorParams(
-                            (rnGesis, random, state) -> newInstanceUnknownType(
+                            (rnGesis, random) -> newInstanceUnknownType(
                                     rnGesis,
                                     random,
                                     childModules,
-                                    constructor,
-                                    state
+                                    constructor
                             ),
                             set
                     );
@@ -79,18 +78,17 @@ public class RnNewModule<T> {
                 val fc = constructorWithHighestParameters;
                 if (constructorWithHighestParameterCount == 0) {
                     return new RNGesisModuleWithConstructorParams(
-                            (rnGesis, random, state) -> newInstanceNoParams(fc)
+                            (rnGesis, random) -> newInstanceNoParams(fc)
                     );
                 } else {
                     val childModules = prepareChildModules(fc.getGenericParameterTypes());
                     val set = parameterNames(fc);
                     return new RNGesisModuleWithConstructorParams(
-                            (rnGesis, random, state) -> newInstanceUnknownType(
+                            (rnGesis, random) -> newInstanceUnknownType(
                                     rnGesis,
                                     random,
                                     childModules,
-                                    fc,
-                                    state
+                                    fc
                             ),
                             set
                     );
@@ -117,7 +115,7 @@ public class RnNewModule<T> {
 
     private RNGesisModule<?>[] prepareChildModules(Type[] parameterTypes) {
         val childModules = new RNGesisModule<?>[parameterTypes.length];
-        for (int i = 0; i < parameterTypes.length; i++) {
+        for (var i = 0; i < parameterTypes.length; i++) {
             val param = parameterTypes[i];
             val rawCollectionTypeModule = rawCollectionTypeModule(param);
             if (rawCollectionTypeModule != null) {
@@ -125,7 +123,7 @@ public class RnNewModule<T> {
                 continue;
             }
             if (param instanceof ParameterizedType) {
-                RNGesisModule<?> module = getParameterizedRnGesisModule((ParameterizedType) param);
+                val module = getParameterizedRngesisModule((ParameterizedType) param);
                 if (module != null) {
                     childModules[i] = module;
                 } else {
@@ -135,17 +133,33 @@ public class RnNewModule<T> {
             } else {
                 val rawParam = (Class<?>) param;
                 val typeName = rawParam.getName();
-                childModules[i] = RNGUnknownTypes.modules.getOrCompute(
-                        typeName,
-                        () -> RNGUnknownTypes.computeNewModule(
-                                parent,
+                if (memo.shouldStopRecursion() && rawParam == memo.getCurrentType()) {
+                    childModules[i] = (rnGesis, random) -> {
+                        return memo.getModules().poll();
+                    };
+                } else {
+                    if (rawParam == String.class) {
+                        childModules[i] = RNGUnknownTypes.modules.getDefault(typeName);
+                    } else {
+                        RNGesisModule<?> mod = RNGUnknownTypes.modules.getOrComputeInternal(
                                 typeName,
-                                rnGesis,
-                                rawParam,
-                                random,
-                                state
-                        )
-                );
+                                () -> RNGUnknownTypes.computeNewModule(
+                                        parent,
+                                        typeName,
+                                        rnGesis,
+                                        rawParam,
+                                        random,
+                                        memo.withCurrentType(rawParam, typeName)
+                                )
+                        );
+                        memo.addModule(mod);
+                        childModules[i] = mod;
+                    }
+                }
+            }
+            if (childModules[i] == null) {
+                throw new IllegalStateException(String.format("Could not instantiate param %s of %s",
+                        param.getTypeName(), typeName));
             }
         }
         return childModules;
@@ -156,32 +170,32 @@ public class RnNewModule<T> {
             val type = (Class<?>) unknownType;
             if (Iterable.class.isAssignableFrom(type)) {
                 if (type == List.class || type == Iterable.class || type == Collection.class || type == ArrayList.class) {
-                    return (rnGesis, random, state) -> new ArrayList<>();
+                    return (rnGesis, random) -> new ArrayList<>();
                 } else if (type == Set.class || type == HashSet.class) {
-                    return (rnGesis, random, state) -> new HashSet<>();
+                    return (rnGesis, random) -> new HashSet<>();
                 } else if (type == Queue.class || type == LinkedList.class) {
-                    return (rnGesis, random, state) -> new LinkedList<>();
+                    return (rnGesis, random) -> new LinkedList<>();
                 } else if (type == Deque.class || type == ArrayDeque.class) {
-                    return (rnGesis, random, state) -> new ArrayDeque<>();
+                    return (rnGesis, random) -> new ArrayDeque<>();
                 } else if (type == SortedSet.class || type == TreeSet.class || type == NavigableSet.class) {
-                    return (rnGesis, random, state) -> new TreeSet<>();
+                    return (rnGesis, random) -> new TreeSet<>();
                 }
             } else if (Map.class.isAssignableFrom(type)) {
                 if (type == Map.class || type == HashMap.class) {
-                    return (rnGesis, random, state) -> new HashMap<>();
+                    return (rnGesis, random) -> new HashMap<>();
                 } else if (type == SortedMap.class || type == TreeMap.class || type == NavigableMap.class) {
-                    return (rnGesis, random, state) -> new TreeMap<>();
+                    return (rnGesis, random) -> new TreeMap<>();
                 } else if (type == ConcurrentMap.class || type == ConcurrentHashMap.class) {
-                    return (rnGesis, random, state) -> new ConcurrentHashMap<>();
+                    return (rnGesis, random) -> new ConcurrentHashMap<>();
                 } else if (type == ConcurrentNavigableMap.class || type == ConcurrentSkipListMap.class) {
-                    return (rnGesis, random, state) -> new ConcurrentSkipListMap<>();
+                    return (rnGesis, random) -> new ConcurrentSkipListMap<>();
                 }
             }
         }
         return null;
     }
 
-    private RNGesisModule<?> getParameterizedRnGesisModule(ParameterizedType param) {
+    private RNGesisModule<?> getParameterizedRngesisModule(ParameterizedType param) {
         val rawType = (Class<?>) param.getRawType();
         if (Iterable.class.isAssignableFrom(rawType)) {
             if (rawType == List.class ||
@@ -233,7 +247,6 @@ public class RnNewModule<T> {
             } else {
                 val keyType = actualTypeArguments[0];
                 val valueType = actualTypeArguments[1];
-
                 val keyModule = getModuleForType(keyType);
                 val valueModule = getModuleForType(valueType);
                 val typeNameKey = rawType + "<" + keyType.getTypeName() + "," + valueType.getTypeName() + ">";
@@ -243,16 +256,14 @@ public class RnNewModule<T> {
                                 typeNameKey,
                                 keyModule,
                                 valueModule,
-                                size -> new EnumMap((Class<?>) keyType),
-                                Map::put
+                                size -> new EnumMap((Class<?>) keyType)
                         );
                     } else {
                         return createMapModule(
                                 typeNameKey,
                                 keyModule,
                                 valueModule,
-                                HashMap::new,
-                                Map::put
+                                HashMap::new
                         );
                     }
                 } else if (rawType == SortedMap.class || rawType == TreeMap.class || rawType == NavigableMap.class) {
@@ -260,24 +271,21 @@ public class RnNewModule<T> {
                             typeNameKey,
                             keyModule,
                             valueModule,
-                            size -> new TreeMap<>(),
-                            Map::put
+                            size -> new TreeMap<>()
                     );
                 } else if (rawType == ConcurrentMap.class || rawType == ConcurrentHashMap.class) {
                     return createMapModule(
                             typeNameKey,
                             keyModule,
                             valueModule,
-                            ConcurrentHashMap::new,
-                            Map::put
+                            ConcurrentHashMap::new
                     );
                 } else if (rawType == ConcurrentNavigableMap.class || rawType == ConcurrentSkipListMap.class) {
                     return createMapModule(
                             typeNameKey,
                             keyModule,
                             valueModule,
-                            size -> new ConcurrentSkipListMap<>(),
-                            Map::put
+                            size -> new ConcurrentSkipListMap<>()
                     );
                 }
             }
@@ -287,20 +295,21 @@ public class RnNewModule<T> {
 
     private RNGesisModule<?> getModuleForType(Type type) {
         if (type instanceof ParameterizedType) {
-            return getParameterizedRnGesisModule((ParameterizedType) type);
+            return getParameterizedRngesisModule((ParameterizedType) type);
         } else if (type instanceof WildcardType) {
             throw new RuntimeException("?");
         } else if (type instanceof Class) {
-            Class<?> classType = (Class<?>) type;
-            return RNGUnknownTypes.modules.getOrCompute(
-                    classType.getName(),
+            val classType = (Class<?>) type;
+            val classTypeName = classType.getName();
+            return RNGUnknownTypes.modules.getOrComputeInternal(
+                    classTypeName,
                     () -> RNGUnknownTypes.computeNewModule(
                             parent,
-                            classType.getName(),
+                            classTypeName,
                             rnGesis,
                             classType,
                             random,
-                            state
+                            memo.withCurrentType(classType, classTypeName)
                     )
             );
         } else {
@@ -311,17 +320,16 @@ public class RnNewModule<T> {
     private RNGesisModule<?> createMapModule(String typeKeyName,
                                              RNGesisModule<?> keyModule,
                                              RNGesisModule<?> valueModule,
-                                             Function<Integer, Map<Object, Object>> mapFn,
-                                             TriConsumer<Map<Object, Object>, Object, Object> mapKeyValConsumer) {
+                                             Function<Integer, Map<Object, Object>> mapFn) {
         return RNGUnknownTypes.modules.getOrCompute(
                 typeKeyName,
-                () -> (rnGesis, random, state) -> {
+                () -> (rnGesis, random) -> {
                     val size = random.nextInt(3) + 1;
                     val map = mapFn.apply(size);
                     for (var i = 0; i < size; i++) {
-                        val key = keyModule.next(rnGesis, random, state);
-                        val value = valueModule.next(rnGesis, random, state);
-                        mapKeyValConsumer.accept(map, key, value);
+                        val key = keyModule.next(rnGesis, random);
+                        val value = valueModule.next(rnGesis, random);
+                        map.put(key, value);
                     }
                     return map;
                 }
@@ -330,13 +338,13 @@ public class RnNewModule<T> {
 
     private RNGesisModule<?> getEmptyMapModule(Class<?> rawType) {
         if (rawType == Map.class || rawType == HashMap.class) {
-            return (rnGesis, random, state) -> new HashMap<>();
+            return (rnGesis, random) -> new HashMap<>();
         } else if (rawType == SortedMap.class || rawType == TreeMap.class || rawType == NavigableMap.class) {
-            return (rnGesis, random, state) -> new TreeMap<>();
+            return (rnGesis, random) -> new TreeMap<>();
         } else if (rawType == ConcurrentMap.class || rawType == ConcurrentHashMap.class) {
-            return (rnGesis, random, state) -> new ConcurrentHashMap<>();
+            return (rnGesis, random) -> new ConcurrentHashMap<>();
         } else if (rawType == ConcurrentNavigableMap.class || rawType == ConcurrentSkipListMap.class) {
-            return (rnGesis, random, state) -> new ConcurrentSkipListMap<>();
+            return (rnGesis, random) -> new ConcurrentSkipListMap<>();
         }
         return null;
     }
@@ -351,7 +359,7 @@ public class RnNewModule<T> {
                                                  BiConsumer<Object, Object> instanceConsumer) {
         val nestedActualTypeArgument = param.getActualTypeArguments()[0];
         if (nestedActualTypeArgument instanceof ParameterizedType) {
-            val nestedModule = getParameterizedRnGesisModule((ParameterizedType) nestedActualTypeArgument);
+            val nestedModule = getParameterizedRngesisModule((ParameterizedType) nestedActualTypeArgument);
             return createCollectionModule(
                     rawType.getName(),
                     nestedModule,
@@ -362,11 +370,11 @@ public class RnNewModule<T> {
         } else if (nestedActualTypeArgument instanceof WildcardType) {
             return RNGUnknownTypes.modules.getOrCompute(
                     rawType.getName() + "<?>",
-                    () -> (rnGesis, random, state) -> Collections.emptyList());
+                    () -> (rnGesis, random) -> Collections.emptyList());
         } else {
             val actualTypeArgument = (Class<?>) nestedActualTypeArgument;
             val actualTypeArgumentName = actualTypeArgument.getName();
-            val actualTypeModule = RNGUnknownTypes.modules.getOrCompute(
+            val actualTypeModule = RNGUnknownTypes.modules.getOrComputeInternal(
                     actualTypeArgumentName,
                     () -> RNGUnknownTypes.computeNewModule(
                             parent,
@@ -374,7 +382,7 @@ public class RnNewModule<T> {
                             rnGesis,
                             actualTypeArgument,
                             random,
-                            state
+                            memo.withCurrentType(actualTypeArgument, actualTypeArgumentName)
                     )
             );
             return createCollectionModule(
@@ -391,7 +399,7 @@ public class RnNewModule<T> {
                                                Class<?> rawType) {
         val nestedActualTypeArgument = param.getActualTypeArguments()[0];
         if (nestedActualTypeArgument instanceof ParameterizedType) {
-            val nestedModule = getParameterizedRnGesisModule((ParameterizedType) nestedActualTypeArgument);
+            val nestedModule = getParameterizedRngesisModule((ParameterizedType) nestedActualTypeArgument);
             return createOptionalModule(
                     rawType.getName(),
                     nestedModule,
@@ -400,11 +408,11 @@ public class RnNewModule<T> {
         } else if (nestedActualTypeArgument instanceof WildcardType) {
             return RNGUnknownTypes.modules.getOrCompute(
                     rawType.getName() + "<?>",
-                    () -> (rnGesis, random, state) -> Collections.emptyList());
+                    () -> (rnGesis, random) -> Collections.emptyList());
         } else {
             val actualTypeArgument = (Class<?>) nestedActualTypeArgument;
             val actualTypeArgumentName = actualTypeArgument.getName();
-            val actualTypeModule = RNGUnknownTypes.modules.getOrCompute(
+            val actualTypeModule = RNGUnknownTypes.modules.getOrComputeInternal(
                     actualTypeArgumentName,
                     () -> RNGUnknownTypes.computeNewModule(
                             parent,
@@ -412,7 +420,7 @@ public class RnNewModule<T> {
                             rnGesis,
                             actualTypeArgument,
                             random,
-                            state
+                            memo.withCurrentType(actualTypeArgument, actualTypeArgumentName)
                     )
             );
             return createOptionalModule(
@@ -431,11 +439,11 @@ public class RnNewModule<T> {
         val moduleName = rawTypeName + "<" + innerTypeName + ">";
         return RNGUnknownTypes.modules.getOrCompute(
                 moduleName,
-                () -> (rnGesis, random, state) -> {
+                () -> (rnGesis, random) -> {
                     val size = random.nextInt(3) + 1;
                     val objects = collectionSupplier.apply(size);
                     for (var i1 = 0; i1 < size; i1++) {
-                        val next = innerModule.next(rnGesis, random, state);
+                        val next = innerModule.next(rnGesis, random);
                         instanceConsumer.accept(objects, next);
                     }
                     return objects;
@@ -449,7 +457,12 @@ public class RnNewModule<T> {
         val moduleName = rawTypeName + "<" + innerTypeName + ">";
         return RNGUnknownTypes.modules.getOrCompute(
                 moduleName,
-                () -> (rnGesis, random, state) -> Optional.of(innerModule.next(rnGesis, random, state))
+                () -> (rnGesis, random) -> Optional.of(
+                        innerModule.next(
+                                rnGesis,
+                                random
+                        )
+                )
         );
     }
 
@@ -459,11 +472,15 @@ public class RnNewModule<T> {
         if (methods.length > 0) {
             val setters = buildMethodWithParameters(methods, module);
             if (!setters.isEmpty()) {
-                return (rngesis, random, state) -> {
-                    val next = module.next(rngesis, random, state);
+                return (rngesis, random) -> {
+                    val next = module.next(rngesis, random);
                     for (val setter : setters.getMethodWithParameters()) {
-                        state.setCurrentParameter(null);
-                        invokeSetter(rngesis, random, setter, next, state);
+                        invokeSetter(
+                                rngesis,
+                                random,
+                                setter,
+                                next
+                        );
                     }
                     return next;
                 };
@@ -489,9 +506,19 @@ public class RnNewModule<T> {
                             val maybeParameterizedType = parameter.getParameterizedType();
                             if (maybeParameterizedType instanceof ParameterizedType) {
 //                                val parameterizedType = (ParameterizedType) maybeParameterizedType;
-                                setters[idx++] = new MethodWithParameter(method, null, parameter.getType(), null);
+                                setters[idx++] = new MethodWithParameter(
+                                        method,
+                                        null,
+                                        parameter.getType(),
+                                        null
+                                );
                             } else {
-                                setters[idx++] = new MethodWithParameter(method, null, parameter.getType(), null);
+                                setters[idx++] = new MethodWithParameter(
+                                        method,
+                                        null,
+                                        parameter.getType(),
+                                        null
+                                );
                             }
                         }
                     }
@@ -514,12 +541,11 @@ public class RnNewModule<T> {
     private Object newInstanceUnknownType(RNGesis rnGesis,
                                           Random random,
                                           RNGesisModule<?>[] childModules,
-                                          Constructor<?> constructor,
-                                          NewModuleState state) {
+                                          Constructor<?> constructor) {
         val parameters = new Object[childModules.length];
         for (var i = 0; i < parameters.length; i++) {
             val childModule = childModules[i];
-            parameters[i] = childModule.next(rnGesis, random, state);
+            parameters[i] = childModule.next(rnGesis, random);
         }
         return constructor.newInstance(parameters);
     }
@@ -529,16 +555,14 @@ public class RnNewModule<T> {
     private void invokeSetter(RNGesis rnGesis,
                               Random random,
                               MethodWithParameter setter,
-                              Object object,
-                              NewModuleState state) {
+                              Object object) {
         setter.getMethod().invoke(
                 object,
                 RNGUnknownTypes.internalNextObject(
                         parent,
                         rnGesis,
                         setter.getParameterType(),
-                        random,
-                        state
+                        random
                 )
         );
     }

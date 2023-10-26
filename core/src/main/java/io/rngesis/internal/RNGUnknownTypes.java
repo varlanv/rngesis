@@ -5,7 +5,6 @@ import io.rngesis.api.RNGesisModule;
 import lombok.SneakyThrows;
 import lombok.val;
 
-import java.util.List;
 import java.util.Random;
 
 public class RNGUnknownTypes {
@@ -19,8 +18,7 @@ public class RNGUnknownTypes {
                 this,
                 rnGesis,
                 type,
-                random,
-                null
+                random
         );
     }
 
@@ -28,8 +26,7 @@ public class RNGUnknownTypes {
     static <T> T internalNextObject(RNGUnknownTypes parent,
                                     RNGesis rnGesis,
                                     Class<T> type,
-                                    Random random,
-                                    NewModuleState state) {
+                                    Random random) {
         val typeName = type.getName();
         val rnGesisModule = modules.getOrCompute(
                 typeName,
@@ -39,16 +36,13 @@ public class RNGUnknownTypes {
                         rnGesis,
                         type,
                         random,
-                        state
+                        new Memo(type, typeName)
                 )
         );
         if (rnGesisModule.isStateless()) {
-            return (T) rnGesisModule.next(rnGesis, random, null);
+            return (T) rnGesisModule.next(rnGesis, random);
         } else {
-            val objectNewModuleCreateOperation = state == null ?
-                    new NewModuleState(rnGesis, type, typeName, random) :
-                    state;
-            return (T) rnGesisModule.next(rnGesis, random, objectNewModuleCreateOperation);
+            return (T) rnGesisModule.next(rnGesis, random);
         }
     }
 
@@ -58,14 +52,19 @@ public class RNGUnknownTypes {
                                                  RNGesis rnGesis,
                                                  Class<T> type,
                                                  Random random,
-                                                 NewModuleState state) {
+                                                 Memo memo) {
+        memo.increment();
         if (type.isEnum()) {
             return enumModule(type);
         }
-        if (type.isAssignableFrom(List.class) && state != null) {
-            System.out.println();
-        }
-        return new RnNewModule<>(parent, typeName, rnGesis, type, random, state).computeNewModule();
+        return new RnNewModule<>(
+                parent,
+                typeName,
+                rnGesis,
+                type,
+                random,
+                memo
+        ).computeNewModule();
     }
 
     private static <T> RNGesisModule<?> enumModule(Class<T> type) {

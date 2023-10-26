@@ -13,7 +13,7 @@ public class RNGStatelessModule<T> implements RNGesisModule<T> {
     BiFunction<RNGesis, Random, T> function;
 
     @Override
-    public T next(RNGesis rnGesis, Random random, NewModuleState operation) {
+    public T next(RNGesis rnGesis, Random random) {
         return function.apply(rnGesis, random);
     }
 

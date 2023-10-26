@@ -1,12 +1,10 @@
 package io.rngesis.api;
 
-import io.rngesis.internal.NewModuleState;
-
 import java.util.Random;
 
 public interface RNGesisModule<T> {
 
-    T next(RNGesis rnGesis, Random random, NewModuleState state);
+    T next(RNGesis rnGesis, Random random);
 
     default boolean isStateless() {
         return false;

@@ -12,6 +12,7 @@ import io.rngesis.test.BaseStatelessUnitTest;
 import lombok.val;
 import lombok.var;
 import org.assertj.core.api.Assertions;
+import org.jeasy.random.EasyRandom;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -70,7 +71,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
 
     @Test
     void nextObject_should_generate_date() {
-        Date actual = subject.nextObject(Date.class);
+        val actual = subject.nextObject(Date.class);
 
         Assertions.assertThat(actual).isNotNull();
     }
@@ -146,7 +147,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
     @Test
     void nextObject_unknown_type_enum_with_20_values_should_when_called_multiple_times_return_random_value() {
         val collection = new ConcurrentLinkedQueue<>();
-        int threads = 20;
+        val threads = 20;
 
         parallel(threads, () -> collection.add(subject.nextObject(EnumType20Values.class)));
 
@@ -174,6 +175,14 @@ class RNGesusTest extends BaseStatelessUnitTest {
         Assertions.assertThat(actual1).isNotSameAs(actual2);
         Assertions.assertThat(actual1.getString()).isNotEqualTo(actual2.getString());
         Assertions.assertThat(actual1.getInteger()).isNotEqualTo(actual2.getInteger());
+    }
+
+    @Test
+    void nextObject_unknown_type_when_recursive_string_constructor_then_nested_object_should_be_same_as_outer_object() {
+//        val subject = new EasyRandom();
+        val actual = subject.nextObject(RecursiveStringConstructorType.class);
+
+        Assertions.assertThat(actual).isNotNull();
     }
 
     @Test
@@ -401,8 +410,8 @@ class RNGesusTest extends BaseStatelessUnitTest {
         Assertions.assertThat(actual.getTranslations().keySet()).doesNotContainNull();
     }
 
-    @RepeatedTest(1)
     @Disabled
+    @RepeatedTest(1)
     void kek() {
         val actual = subject.nextObject(OutcomeType.class);
 //        val subject = new EasyRandom(new EasyRandomParameters().collectionSizeRange(1, 3));
@@ -598,7 +607,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
         val nIterations = 1000;
         val ints = new ConcurrentHashMap<>();
         parallel(() -> {
-            for (int j = 0; j < nIterations; j++) {
+            for (var j = 0; j < nIterations; j++) {
                 ints.put(subject.nextInt(), 0);
             }
         });
@@ -611,7 +620,7 @@ class RNGesusTest extends BaseStatelessUnitTest {
         val nIterations = 1000;
         val ints = new ConcurrentLinkedQueue<>();
         parallel(() -> {
-            for (int j = 0; j < nIterations; j++) {
+            for (var j = 0; j < nIterations; j++) {
                 ints.add(new int[]{subject.nextInt()});
             }
         });
@@ -621,8 +630,8 @@ class RNGesusTest extends BaseStatelessUnitTest {
 
     static List<Long> times = new ArrayList<>();
 
+    //    @Disabled
     @RepeatedTest(1)
-    @Disabled
     void pa() throws Exception {
         val iterations = 2_000_000;
         val ints = new StringAndIntegerConstructorType[iterations];
@@ -653,23 +662,5 @@ class RNGesusTest extends BaseStatelessUnitTest {
         System.err.printf("Obj - %s%n", ints[0]);
         times.add(iterationTime);
         System.err.printf("Avg - %s%n", times.stream().mapToLong(Long::longValue).average().getAsDouble());
-    }
-
-    @Test
-    @Disabled
-    void pa2() throws Exception {
-        int iterations = 2000000;
-        StringAndIntegerConstructorType[] objects = new StringAndIntegerConstructorType[iterations];
-        final int[] cnt = {0};
-        long before = System.currentTimeMillis();
-//        EasyRandom easyRandom = new EasyRandom();
-        RNGesus easyRandom = new RNGesus();
-        nonParallel(iterations, () -> {
-            StringAndIntegerConstructorType rnd = easyRandom.nextObject(StringAndIntegerConstructorType.class);
-            objects[cnt[0]++] = rnd;
-        });
-        System.err.printf("Finished in %s seconds%n", ((System.currentTimeMillis() - before) / 1000.0));
-        System.out.println(new HashSet(Arrays.stream(objects).collect(Collectors.toList())).size());
-        System.err.printf("Obj - %s", objects[0]);
     }
 }

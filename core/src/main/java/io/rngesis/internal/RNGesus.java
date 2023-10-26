@@ -5,7 +5,7 @@ import io.rngesis.api.RNGesisModule;
 import lombok.val;
 import lombok.var;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -27,16 +27,15 @@ public class RNGesus implements RNGesis {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <T> List<T> nextObjects(Class<T> type, int size) {
         if (size <= 0) {
             throw new IllegalArgumentException("Size must be greater than 0");
         }
-        val array = (T[]) new Object[size];
+        val list = new ArrayList<T>(size);
         for (var i = 0; i < size; i++) {
-            array[i] = nextObject(type);
+            list.add(nextObject(type));
         }
-        return Arrays.asList(array);
+        return list;
     }
 
     @Override

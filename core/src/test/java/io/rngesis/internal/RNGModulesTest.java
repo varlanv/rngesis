@@ -2,6 +2,7 @@ package io.rngesis.internal;
 
 import io.rngesis.api.RNGesisModule;
 import io.rngesis.test.BaseStatelessUnitTest;
+import lombok.val;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 
 import java.util.Collection;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -30,7 +30,7 @@ class RNGModulesTest extends BaseStatelessUnitTest {
     @Test
     void getOrCompute_if_module_not_exists_should_create_and_return_module() {
         AtomicInteger counter = new AtomicInteger();
-        RNGesisModule<Object> objectRNGesisModule = (rngesis, random, state) -> moduleCallResult;
+        RNGesisModule<Object> objectRNGesisModule = (rnGesis, random) -> moduleCallResult;
         Supplier<RNGesisModule<?>> supplier = () -> {
             counter.incrementAndGet();
             return objectRNGesisModule;
@@ -47,7 +47,7 @@ class RNGModulesTest extends BaseStatelessUnitTest {
     @Test
     void getOrCompute_if_module_exists_should_return_module_and_not_call_supplier() {
         AtomicInteger counter = new AtomicInteger();
-        RNGesisModule<Object> objectRNGesisModule = (rngesis, random, state) -> moduleCallResult;
+        RNGesisModule<Object> objectRNGesisModule = (rnGesis, random) -> moduleCallResult;
         Supplier<RNGesisModule<?>> supplier = () -> {
             counter.incrementAndGet();
             return objectRNGesisModule;
@@ -66,7 +66,7 @@ class RNGModulesTest extends BaseStatelessUnitTest {
     @RepeatedTest(DEFAULT_REPEAT_COUNT)
     void getOrCompute_if_multiple_threads_request_same_type_then_only_one_should_be_created() {
         AtomicInteger counter = new AtomicInteger();
-        RNGesisModule<Object> objectRNGesisModule = (rngesis, random, state) -> moduleCallResult;
+        RNGesisModule<Object> objectRNGesisModule = (rnGesis, random) -> moduleCallResult;
         Supplier<RNGesisModule<?>> supplier = () -> {
             counter.incrementAndGet();
             return objectRNGesisModule;
@@ -85,7 +85,7 @@ class RNGModulesTest extends BaseStatelessUnitTest {
     void getOrCompute_if_multiple_threads_request_same_type_from_different_instances_then_only_one_should_be_created() {
         AtomicInteger counter = new AtomicInteger();
         Collection<RNGesisModule<?>> modules = new ConcurrentLinkedQueue<>();
-        RNGesisModule<Object> objectRNGesisModule = (rngesis, random, state) -> moduleCallResult;
+        RNGesisModule<Object> objectRNGesisModule = (rnGesis, random) -> moduleCallResult;
         int threads = 20;
 
         parallel(threads, () -> {
@@ -104,11 +104,11 @@ class RNGModulesTest extends BaseStatelessUnitTest {
 
     @RepeatedTest(DEFAULT_REPEAT_COUNT)
     void getOrCompute_if_multiple_threads_request_different_types_from_different_instances_then_each_should_be_created_only_once() {
-        AtomicInteger counter = new AtomicInteger();
-        Collection<RNGesisModule<?>> modules = new ConcurrentLinkedQueue<>();
-        RNGesisModule<Object> objectRNGesisModule = (rngesis, random, state) -> moduleCallResult;
-        int threads = 20;
-        Queue<String> types = IntStream.range(0, threads)
+        val counter = new AtomicInteger();
+        val modules = new ConcurrentLinkedQueue<>();
+        RNGesisModule<Object> objectRNGesisModule = (rnGesis, random) -> moduleCallResult;
+        val threads = 20;
+        val types = IntStream.range(0, threads)
                 .mapToObj(i -> i % 2 == 0 ? "type_1" : "type_2")
                 .collect(Collectors.toCollection(ConcurrentLinkedQueue::new));
 
@@ -117,7 +117,7 @@ class RNGModulesTest extends BaseStatelessUnitTest {
                 counter.incrementAndGet();
                 return objectRNGesisModule;
             };
-            RNGModules subject = new RNGModules();
+            val subject = new RNGModules();
             modules.add(subject.getOrCompute(types.poll(), supplier));
         });
 

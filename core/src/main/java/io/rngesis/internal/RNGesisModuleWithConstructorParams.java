@@ -21,7 +21,7 @@ public class RNGesisModuleWithConstructorParams implements RNGesisModule<Object>
     }
 
     @Override
-    public Object next(RNGesis rnGesis, Random random, NewModuleState state) {
-        return delegate.next(rnGesis, random, state);
+    public Object next(RNGesis rnGesis, Random random) {
+        return delegate.next(rnGesis, random);
     }
 }
